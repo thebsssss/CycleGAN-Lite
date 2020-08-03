@@ -62,28 +62,21 @@ class CycleDataset(Dataset):
     def __len__(self):
         return max(self.A_size, self.B_size)
 
-def transformer_set(opt, grayscale=False, method=Image.BICUBIC, convert=True):
+def transformer_set(opt, grayscale=False, method=Image.BICUBIC):
     transform_list = []
     if grayscale:
         transform_list.append(transforms.Grayscale(1))
-    if 'resize' in opt.preprocess:
-        osize = [opt.load_size, opt.load_size]
-        transform_list.append(transforms.Resize(osize, method))
-
-
-    if 'crop' in opt.preprocess:
+    if opt.phase == 'train':
+        out_size = [opt.load_size, opt.load_size]
+        transform_list.append(transforms.Resize(out_size, method))
         transform_list.append(transforms.RandomCrop(opt.crop_size))
-
-
-    if not opt.no_flip:
         transform_list.append(transforms.RandomHorizontalFlip())
 
-    if convert:
-        transform_list += [transforms.ToTensor()]
-        if grayscale:
-            transform_list += [transforms.Normalize((0.5,), (0.5,))]
-        else:
-            transform_list += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+    transform_list += [transforms.ToTensor()]
+    if grayscale:
+        transform_list += [transforms.Normalize((0.5,), (0.5,))]
+    else:
+        transform_list += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
     return transforms.Compose(transform_list)
 
 

@@ -11,11 +11,15 @@ class CycleGAN():
         self.opt = opt
         self.gpu_ids = opt.gpu_ids
         self.isTrain = opt.isTrain
-        self.device = torch.device('cuda:{}'.format(self.gpu_ids[0])) if self.gpu_ids else torch.device(
-            'cpu')  # get device name: CPU or GPU
-        self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)  # save all the checkpoints to save_dir
-        if opt.preprocess != 'scale_width':  # with [scale_width], input images might have different sizes, which hurts the performance of cudnn.benchmark.
-            torch.backends.cudnn.benchmark = True
+        # get device name: CPU or GPU
+        self.device = torch.device('cuda:{}'.format(self.gpu_ids[0])) if self.gpu_ids else torch.device('cpu')
+        # save all the checkpoints to save_dir
+        self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)
+        mkdirs(self.save_dir)
+        self.image_save_dir = os.path.join(self.opt.results_dir, self.opt.name, self.opt.phase)
+        mkdirs(self.image_save_dir)
+
+        torch.backends.cudnn.benchmark = True
 
         self.optimizers = []
         self.image_paths = []
@@ -148,9 +152,6 @@ class CycleGAN():
             self.fake_B = self.G_AB(self.real_A)
             self.fake_A = self.G_BA(self.real_B)
 
-
-
-
     def save_images(self,batch,epoch = None ):
         real_A = make_grid(self.real_A, nrow=self.opt.batch_size, normalize=True)
         real_B = make_grid(self.real_A, nrow=self.opt.batch_size, normalize=True)
@@ -159,13 +160,11 @@ class CycleGAN():
 
         image_grid = torch.cat((real_A, fake_B, real_B, fake_A), 1)
 
-        path = os.path.join(self.opt.results_dir,self.opt.name,self.opt.phase)
-        mkdirs(path)
         if epoch:
             file_name = '%s_batch_%s_epoch.png'%(batch,epoch)
         else:
             file_name = '%s_batch.png'%(batch)
-        save_path = os.path.join(path,file_name)
+        save_path = os.path.join(self.image_save_dir,file_name)
         save_image(image_grid,save_path, False)
         print('Images are saved at: %s' % save_path)
 
@@ -181,6 +180,7 @@ class CycleGAN():
             net = getattr(self,name)
             if len(self.gpu_ids)>0 and torch.cuda.is_available():
                 torch.save(net.module.cpu().state_dict(),path)
+                net.cuda(self.gpu_ids[0])
             else:
                 torch.save(net.cpu().state_dict(),path)
 
@@ -193,8 +193,6 @@ class CycleGAN():
                 net = net.module
             net.load_state_dict(torch.load(path, map_location=self.device))
             print('Successfully load model from %s'%path)
-
-
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_features,use_dropout):

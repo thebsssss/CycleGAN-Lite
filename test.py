@@ -1,4 +1,3 @@
-import time
 from CycleGAN import *
 
 if __name__ == '__main__':

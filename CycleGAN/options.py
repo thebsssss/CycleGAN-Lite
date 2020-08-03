@@ -24,10 +24,8 @@ class BaseOptions():
         parser.add_argument('--n_cpu', default=8, type=int, help='# of cpu threads to use during batch generation')
         parser.add_argument('--batch_size', type=int, default=1, help='input batch size')
         parser.add_argument('--load_size', type=int, default=286, help='scale images to this size')
-        parser.add_argument('--crop_size', type=int, default=256, help='then crop to this size')
+        parser.add_argument('--crop_size', type=int, default=256, help='crop images to this size')
         parser.add_argument('--max_dataset_size', type=int, default=float("inf"), help='Maximum number of samples allowed per dataset. If the dataset directory contains more than max_dataset_size, only a subset is loaded.')
-        parser.add_argument('--preprocess', type=str, default='resize_and_crop', help='scaling and cropping of images at load time [resize_and_crop | crop | scale_width | scale_width_and_crop | none]')
-        parser.add_argument('--no_flip', action='store_true', help='if specified, do not flip the images for data augmentation')
         # additional parameters
         parser.add_argument('--load_epoch', type=str, default='latest', help='which epoch to load? set to latest to use latest cached model')
         self.initialized = True
@@ -50,7 +48,6 @@ class BaseOptions():
             opt.num_threads = 1
             opt.batch_size = 1
             opt.shuffle = False
-            opt.no_flip = True
             opt.dropout = False
 
         print(opt)
@@ -103,9 +100,6 @@ class TestOptions(BaseOptions):
         # Dropout and Batchnorm has different behavioir during training and test.
         parser.add_argument('--eval', action='store_true', help='use eval mode during test time.')
         parser.add_argument('--num_test', type=int, default=100, help='how many test images to run')
-
-        # To avoid cropping, the load_size should be the same as crop_size
-        parser.set_defaults(load_size=parser.get_default('crop_size'))
         parser.set_defaults(phase='test')
         self.isTrain = False
 
