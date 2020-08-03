@@ -3,7 +3,7 @@ import torch
 import itertools
 from collections import OrderedDict
 import os
-from CycleGAN.utils import ImageBuffer
+from CycleGAN.utils import ImageBuffer,mkdirs
 from torchvision.utils import make_grid,save_image
 
 class CycleGAN():
@@ -30,8 +30,8 @@ class CycleGAN():
             if opt.lambda_identity >0:
                 assert opt.input_nc==opt.output_nc
 
-        self.G_AB = ResnetGenerator(opt.input_nc, opt.output_nc, opt.dropout, opt.netG)
-        self.G_BA = ResnetGenerator(opt.output_nc, opt.input_nc, opt.dropout, opt.netG)
+        self.G_AB = ResnetGenerator(opt.input_nc, opt.output_nc, opt.dropout, opt.n_residual_blocks)
+        self.G_BA = ResnetGenerator(opt.output_nc, opt.input_nc, opt.dropout, opt.n_residual_blocks)
         self.G_AB = init_network(self.G_AB, self.gpu_ids)
         self.G_BA = init_network(self.G_BA, self.gpu_ids)
 
@@ -55,11 +55,10 @@ class CycleGAN():
             self.schedulers = [torch.optim.lr_scheduler.LambdaLR(optimizer,lambda epoch: 1.0 - max(0, epoch + opt.epoch_to_start - opt.n_epochs) / float(opt.n_epochs_decay + 1)) for optimizer in self.optimizers]
 
         if not self.isTrain or opt.continue_train:
-            self.load_models(opt.epoch)
+            self.load_models(opt.load_epoch)
 
         if self.opt.phase == 'test':
             self.eval()
-
 
     def loss_list(self):
         loss_dict = OrderedDict()
@@ -136,7 +135,7 @@ class CycleGAN():
         for scheduler in self.schedulers:
             scheduler.step()
         lr = self.optimizers[0].param_groups[0]['lr']
-        print('learning rate % .7f -> %.7f'%(old_lr,lr))
+        print('learning rate has changed from % .8f to %.8f'%(old_lr,lr))
 
     def eval(self):
         for name in self.network_names:
@@ -148,14 +147,28 @@ class CycleGAN():
         with torch.no_grad:
             self.fake_B = self.G_AB(self.real_A)
             self.fake_A = self.G_BA(self.real_B)
-            real_A = make_grid(self.real_A, n_row=5, normalize=True)
-            real_B = make_grid(self.real_A, n_row=5, normalize=True)
-            fake_A = make_grid(self.fake_A, n_row=5, normalize=True)
-            fake_B = make_grid(self.fake_B, n_row=5, normalize=True)
 
-            image_grid = torch.cat((real_A,fake_B,real_B,fake_A),1)
-            save_path = os.path.join(self.opt.result_dir,'%s'%self.opt.name)
-            save_image(image_grid,save_path, normalize=False)
+
+
+
+    def save_images(self,batch,epoch = None ):
+        real_A = make_grid(self.real_A, nrow=self.opt.batch_size, normalize=True)
+        real_B = make_grid(self.real_A, nrow=self.opt.batch_size, normalize=True)
+        fake_A = make_grid(self.fake_A, nrow=self.opt.batch_size, normalize=True)
+        fake_B = make_grid(self.fake_B, nrow=self.opt.batch_size, normalize=True)
+
+        image_grid = torch.cat((real_A, fake_B, real_B, fake_A), 1)
+
+        path = os.path.join(self.opt.results_dir,self.opt.name,self.opt.phase)
+        mkdirs(path)
+        if epoch:
+            file_name = '%s_batch_%s_epoch.png'%(batch,epoch)
+        else:
+            file_name = '%s_batch.png'%(batch)
+        save_path = os.path.join(path,file_name)
+        save_image(image_grid,save_path, False)
+        print('Images are saved at: %s' % save_path)
+
 
     def input(self,input):
         self.real_A = input['A'].to(self.device)
@@ -203,12 +216,8 @@ class ResidualBlock(nn.Module):
         return x + self.block(x)
 
 class ResnetGenerator(nn.Module):
-    def __init__(self,input_nc, output_nc, use_dropout = False , netG='resnet_9blocks'):
+    def __init__(self,input_nc, output_nc, use_dropout = False , n_residual_blocks=9):
         super(ResnetGenerator, self).__init__()
-        if netG == 'resnet_9blocks':
-            n_residual_blocks = 9
-        elif netG == 'resnet_6blocks':
-            n_residual_blocks = 6
 
         model = [nn.ReflectionPad2d(3),
                  nn.Conv2d(input_nc,64,7),

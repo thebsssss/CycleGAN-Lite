@@ -1,5 +1,6 @@
 import time
 from CycleGAN import *
+import sys
 
 
 
@@ -15,11 +16,16 @@ if __name__ == '__main__':
             model.input(batch)
             model.update_parameters()
             loss_list = model.loss_list()
+            # Log Information
+            to_print = 'Epoch: %d/%d, Batch: %d/%d,'%(epoch,opt.n_epochs+opt.n_epochs_decay, i+1, len(dataloader))
+            for key,value in loss_list.items():
+                to_print += ' %s: %.3f '%(key,value)
+            sys.stdout.write(
+                '\r Current:' + to_print+'\r'
+            )
             if (i+1)%opt.print_freq == 0:
-                to_print = '[Epoch %d/%d] [Batch %d/%d]'%(epoch,opt.n_epochs+opt.n_epochs_decay, i+1, len(dataloader))
-                for key,value in loss_list.items():
-                    to_print += '[%s %.3f]'%(key,value)
                 print(to_print)
+                model.save_images(i,epoch)
         model.update_lr()
 
         if epoch% opt.save_epoch_freq ==0:

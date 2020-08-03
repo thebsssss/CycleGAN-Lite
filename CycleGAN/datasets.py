@@ -1,5 +1,4 @@
 import random
-import numpy as np
 import glob
 import os
 from torch.utils.data import Dataset
@@ -13,7 +12,7 @@ def CycleLoader(opt):
         dataset,
         batch_size=opt.batch_size,
         shuffle=opt.shuffle,
-        num_workers=opt.num_threads
+        num_workers=opt.n_cpu
     )
     return dataloader
 
