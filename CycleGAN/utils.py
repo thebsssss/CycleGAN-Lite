@@ -13,7 +13,7 @@ class ImageBuffer():
             self.imgs = []
 
     def reselect(self, input):
-        if self.buffer_size == 0:
+        if not (self.buffer_size > 0):
             return input
         to_return = []
         for image in input:
