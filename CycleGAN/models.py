@@ -16,7 +16,7 @@ class CycleGAN():
         # save all the checkpoints to save_dir
         self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)
         mkdirs(self.save_dir)
-        self.image_save_dir = os.path.join(self.opt.results_dir, self.opt.name, self.opt.phase)
+        self.image_save_dir = os.path.join(self.opt.generated_images_dir, self.opt.name, self.opt.phase)
         mkdirs(self.image_save_dir)
 
         torch.backends.cudnn.benchmark = True
