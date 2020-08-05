@@ -3,21 +3,19 @@ import torch
 import itertools
 from collections import OrderedDict
 import os
-from CycleGAN.utils import ImageBuffer,mkdirs
+from CycleGAN.utils import ImageBuffer
 from torchvision.utils import make_grid,save_image
 
 class CycleGAN():
     def __init__(self,opt):
         self.opt = opt
-        self.gpu_ids = opt.gpu_ids
-        self.isTrain = opt.isTrain
         # get device name: CPU or GPU
-        self.device = torch.device('cuda:{}'.format(self.gpu_ids[0])) if self.gpu_ids else torch.device('cpu')
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # save all the checkpoints to save_dir
-        self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)
-        mkdirs(self.save_dir)
+        self.model_save_dir = os.path.join(opt.checkpoints_dir, opt.name)
+        os.makedirs(self.model_save_dir,exist_ok=True)
         self.image_save_dir = os.path.join(self.opt.generated_images_dir, self.opt.name, self.opt.phase)
-        mkdirs(self.image_save_dir)
+        os.makedirs(self.image_save_dir,exist_ok=True)
 
         torch.backends.cudnn.benchmark = True
 
@@ -25,25 +23,29 @@ class CycleGAN():
         self.image_paths = []
         self.loss_names = ['total_loss_G', 'gan_loss','id_loss','cycle_loss','total_loss_D_A','total_loss_D_B']
 
-        if self.isTrain:
+        if self.phase=='train':
             self.network_names = ['G_AB', 'G_BA', 'D_A', 'D_B']
-        else:  # during test time, only load Generators
+        else:
             self.network_names = ['G_AB', 'G_BA']
 
-        if self.isTrain:
+        if self.phase=='train':
             if opt.lambda_identity >0:
-                assert opt.input_nc==opt.output_nc
+                assert opt.input_nc==opt.output_nc , 'To use identity loss, # of image channels should be the same'
 
         self.G_AB = ResnetGenerator(opt.input_nc, opt.output_nc, opt.dropout, opt.n_residual_blocks)
         self.G_BA = ResnetGenerator(opt.output_nc, opt.input_nc, opt.dropout, opt.n_residual_blocks)
-        self.G_AB = init_network(self.G_AB, self.gpu_ids)
-        self.G_BA = init_network(self.G_BA, self.gpu_ids)
+        self.G_AB.to(self.device)
+        self.G_BA.to(self.device)
+        self.G_AB.apply(weights_init_normal)
+        self.G_BA.apply(weights_init_normal)
 
-        if self.isTrain:
+        if self.phase=='train':
             self.D_A = Discriminator(opt.input_nc)
             self.D_B = Discriminator(opt.output_nc)
-            self.D_A = init_network(self.D_A, self.gpu_ids)
-            self.D_B = init_network(self.D_B, self.gpu_ids)
+            self.D_A.to(self.device)
+            self.D_B.to(self.device)
+            self.D_A.apply(weights_init_normal)
+            self.D_B.apply(weights_init_normal)
             # Replay buffer
             self.fake_A_buffer = ImageBuffer(opt.buffer_size)
             self.fake_B_buffer = ImageBuffer(opt.buffer_size)
@@ -53,12 +55,12 @@ class CycleGAN():
             self.criterion_identity = torch.nn.L1Loss()
             # optimizers
             self.optimizer_G = torch.optim.Adam(itertools.chain(self.G_AB.parameters(),self.G_BA.parameters()), lr=opt.lr,betas=(opt.beta1,opt.beta2))
-            self.optimizer_D = torch.optim.Adam(itertools.chain(self.D_A.parameters(), self.D_B.parameters()), lr=opt.lr, betas=(opt.beta1, opt.beta2))
+            self.optimizer_D = torch.optim.Adam(itertools.chain(self.D_A.parameters(), self.D_B.parameters()), lr=opt.lr, betas=(opt.beta1,opt.beta2))
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
             self.schedulers = [torch.optim.lr_scheduler.LambdaLR(optimizer,lambda epoch: 1.0 - max(0, epoch + opt.epoch_to_start - opt.n_epochs) / float(opt.n_epochs_decay + 1)) for optimizer in self.optimizers]
 
-        if not self.isTrain or opt.continue_train:
+        if not (self.phase=='train') or opt.continue_train:
             self.load_models(opt.load_epoch)
 
         if self.opt.phase == 'test':
@@ -176,21 +178,19 @@ class CycleGAN():
     def save_models(self,epoch):
         for name in self.network_names:
             filename = '%s_net_%s.pth'%(epoch,name)
-            path = os.path.join(self.save_dir,filename)
+            path = os.path.join(self.model_save_dir,filename)
             net = getattr(self,name)
-            if len(self.gpu_ids)>0 and torch.cuda.is_available():
-                torch.save(net.module.cpu().state_dict(),path)
-                net.cuda(self.gpu_ids[0])
+            if torch.cuda.is_available():
+                torch.save(net.cpu().state_dict(),path)
+                net.cuda()
             else:
                 torch.save(net.cpu().state_dict(),path)
 
     def load_models(self,epoch):
         for name in self.network_names:
             filename = '%s_net_%s.pth'%(epoch,name)
-            path = os.path.join(self.save_dir,filename)
+            path = os.path.join(self.model_save_dir,filename)
             net = getattr(self,name)
-            if isinstance(net, torch.nn.DataParallel):
-                net = net.module
             net.load_state_dict(torch.load(path, map_location=self.device))
             print('Successfully load model from %s'%path)
 
@@ -288,11 +288,3 @@ def weights_init_normal(m):
     elif classname.find('BatchNorm2d') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant(m.bias.data, 0.0)
-
-def init_network(net,gpu_ids = []):
-    if len(gpu_ids)>0:
-        assert torch.cuda.is_available()
-        net.to(gpu_ids[0])
-        net = nn.DataParallel(net,gpu_ids)
-    net.apply(weights_init_normal)
-    return net

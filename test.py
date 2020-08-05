@@ -1,7 +1,7 @@
 from CycleGAN import *
 
 if __name__ == '__main__':
-    opt = options.TestOptions().parse()
+    opt = utils.Options()
     dataloader = datasets.CycleLoader(opt)
 
     model = models.CycleGAN(opt)

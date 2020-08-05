@@ -57,7 +57,7 @@ class CycleDataset(Dataset):
         B = self.transform_B(B_img)
 
 
-        return {'A': A, 'B': B, 'files_A': files_A, 'files_B': files_B}
+        return {'A': A, 'B': B}
 
     def __len__(self):
         return max(self.A_size, self.B_size)
