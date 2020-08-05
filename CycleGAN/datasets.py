@@ -22,11 +22,11 @@ class CycleDataset(Dataset):
         self.opt = opt
         self.root = opt.dataroot
 
-        # create paths '/path/to/data/trainA' and '/path/to/data/trainB'
+        # create image paths
         self.dir_A = os.path.join(opt.dataroot, opt.phase + 'A')
         self.dir_B = os.path.join(opt.dataroot, opt.phase + 'B')
 
-        # load images from '/path/to/data/trainA' and '/path/to/data/trainB'
+        # load images
         self.files_A = sorted(glob.glob(self.dir_A + "/*.*"))
         self.A_size = min(opt.max_dataset_size, len(self.files_A))
         self.files_A = self.files_A[: self.A_size]
