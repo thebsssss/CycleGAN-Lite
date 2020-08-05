@@ -67,9 +67,10 @@ def transformer_set(opt, grayscale=False, method=Image.BICUBIC):
     if grayscale:
         transform_list.append(transforms.Grayscale(1))
     if opt.phase == 'train':
-        out_size = [opt.load_size, opt.load_size]
-        transform_list.append(transforms.Resize(out_size, method))
-        transform_list.append(transforms.RandomCrop(opt.crop_size))
+        re_size = int(1.12*opt.image_size)
+        in_size = [re_size, re_size]
+        transform_list.append(transforms.Resize(in_size, method))
+        transform_list.append(transforms.RandomCrop(opt.image_size))
         transform_list.append(transforms.RandomHorizontalFlip())
 
     transform_list += [transforms.ToTensor()]

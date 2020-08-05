@@ -52,8 +52,7 @@ def Options():
                         help='if true, takes images in order to make batches, otherwise takes them randomly')
     parser.add_argument('--n_cpu', default=8, type=int, help='# of cpu threads to use during batch generation')
     parser.add_argument('--batch_size', type=int, default=1, help='input batch size')
-    parser.add_argument('--load_size', type=int, default=286, help='scale images to this size')
-    parser.add_argument('--crop_size', type=int, default=256, help='crop images to this size')
+    parser.add_argument('--image_size', type=int, default=256, help='image size of input')
     parser.add_argument('--max_dataset_size', type=int, default=float("inf"),
                         help='maximum number of samples allowed per dataset.')
     # additional parameters
