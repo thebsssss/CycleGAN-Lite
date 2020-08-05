@@ -23,12 +23,12 @@ class CycleGAN():
         self.image_paths = []
         self.loss_names = ['total_loss_G', 'gan_loss','id_loss','cycle_loss','total_loss_D_A','total_loss_D_B']
 
-        if self.phase=='train':
+        if self.opt.phase=='train':
             self.network_names = ['G_AB', 'G_BA', 'D_A', 'D_B']
         else:
             self.network_names = ['G_AB', 'G_BA']
 
-        if self.phase=='train':
+        if self.opt.phase=='train':
             if opt.lambda_identity >0:
                 assert opt.input_nc==opt.output_nc , 'To use identity loss, # of image channels should be the same'
 
@@ -39,7 +39,7 @@ class CycleGAN():
         self.G_AB.apply(weights_init_normal)
         self.G_BA.apply(weights_init_normal)
 
-        if self.phase=='train':
+        if self.opt.phase=='train':
             self.D_A = Discriminator(opt.input_nc)
             self.D_B = Discriminator(opt.output_nc)
             self.D_A.to(self.device)
@@ -60,7 +60,7 @@ class CycleGAN():
             self.optimizers.append(self.optimizer_D)
             self.schedulers = [torch.optim.lr_scheduler.LambdaLR(optimizer,lambda epoch: 1.0 - max(0, epoch + opt.epoch_to_start - opt.n_epochs) / float(opt.n_epochs_decay + 1)) for optimizer in self.optimizers]
 
-        if not (self.phase=='train') or opt.continue_train:
+        if not (self.opt.phase=='train') or opt.continue_train:
             self.load_models(opt.load_epoch)
 
         if self.opt.phase == 'test':
